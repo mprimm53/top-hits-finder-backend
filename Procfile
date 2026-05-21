@@ -1,0 +1,6 @@
+flask
+flask-cors
+billboard.py
+requests
+beautifulsoup4
+gunicorn
