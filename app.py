@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import billboard
 from datetime import date, timedelta
+from urllib.parse import quote_plus
 
 app = Flask(__name__)
 CORS(app)
@@ -79,11 +80,12 @@ def get_weeks(year, month):
 @app.route('/api/search/youtube', methods=['GET'])
 def search_youtube():
     try:
-        title = request.args.get('title', '')
-        artist = request.args.get('artist', '')
-        search_query = f"{title} {artist} official"
+        title = request.args.get('title', '').strip()
+        artist = request.args.get('artist', '').strip()
+        search_query = ' '.join(filter(None, [title, artist, 'official']))
+        encoded_query = quote_plus(search_query)
         return jsonify({
-            'url': f"https://www.youtube.com/results?search_query={search_query.replace(' ', '+')}"
+            'url': f"https://www.youtube.com/results?search_query={encoded_query}"
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -91,11 +93,12 @@ def search_youtube():
 @app.route('/api/search/spotify', methods=['GET'])
 def search_spotify():
     try:
-        title = request.args.get('title', '')
-        artist = request.args.get('artist', '')
-        search_query = f"{title} {artist}"
+        title = request.args.get('title', '').strip()
+        artist = request.args.get('artist', '').strip()
+        search_query = ' '.join(filter(None, [title, artist]))
+        encoded_query = quote_plus(search_query)
         return jsonify({
-            'url': f"https://open.spotify.com/search/{search_query.replace(' ', '%20')}"
+            'url': f"https://open.spotify.com/search/{encoded_query}"
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
