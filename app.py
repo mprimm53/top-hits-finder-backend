@@ -1,17 +1,24 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 import billboard
+from datetime import date, timedelta
 
 app = Flask(__name__)
 CORS(app)
 
+@app.route('/', methods=['GET'])
+def home():
+    return jsonify({'status': 'Top Hits Finder API is running!'})
+
+@app.route('/health', methods=['GET'])
+def health():
+    return jsonify({'status': 'healthy'})
+
 @app.route('/api/charts/<int:year>/<int:month>', methods=['GET'])
 def get_charts(year, month):
     try:
-        # Format date for Billboard
-        date = f"{year}-{month:02d}-01"
-        chart = billboard.ChartData('hot-100', date=date)
-        
+        date_str = f"{year}-{month:02d}-01"
+        chart = billboard.ChartData('hot-100', date=date_str)
         songs = []
         for entry in chart:
             songs.append({
@@ -19,17 +26,14 @@ def get_charts(year, month):
                 'title': entry.title,
                 'artist': entry.artist,
             })
-        
         return jsonify({'chart': songs})
-    
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/weeks/<int:year>/<int:month>', methods=['GET'])
-def get_weeks(year, month):
+@app.route('/api/charts/<int:year>/<int:month>/weeks', methods=['GET'])
+def get_chart_weeks(year, month):
     try:
         weeks = []
-        from datetime import date, timedelta
         d = date(year, month, 1)
         while d.month == month:
             weeks.append({
@@ -38,13 +42,63 @@ def get_weeks(year, month):
             })
             d += timedelta(days=7)
         return jsonify({'weeks': weeks})
-    
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/', methods=['GET'])
-def home():
-    return jsonify({'status': 'Top Hits Finder API is running!'})
+@app.route('/api/charts/<int:year>/<int:month>/<int:week>', methods=['GET'])
+def get_chart_by_week(year, month, week):
+    try:
+        date_str = f"{year}-{month:02d}-{week:02d}"
+        chart = billboard.ChartData('hot-100', date=date_str)
+        songs = []
+        for entry in chart:
+            songs.append({
+                'rank': entry.rank,
+                'title': entry.title,
+                'artist': entry.artist,
+            })
+        return jsonify({'chart': songs})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/weeks/<int:year>/<int:month>', methods=['GET'])
+def get_weeks(year, month):
+    try:
+        weeks = []
+        d = date(year, month, 1)
+        while d.month == month:
+            weeks.append({
+                'label': d.strftime('%b %d, %Y'),
+                'value': d.strftime('%Y-%m-%d')
+            })
+            d += timedelta(days=7)
+        return jsonify({'weeks': weeks})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/search/youtube', methods=['GET'])
+def search_youtube():
+    try:
+        title = request.args.get('title', '')
+        artist = request.args.get('artist', '')
+        search_query = f"{title} {artist} official"
+        return jsonify({
+            'url': f"https://www.youtube.com/results?search_query={search_query.replace(' ', '+')}"
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/search/spotify', methods=['GET'])
+def search_spotify():
+    try:
+        title = request.args.get('title', '')
+        artist = request.args.get('artist', '')
+        search_query = f"{title} {artist}"
+        return jsonify({
+            'url': f"https://open.spotify.com/search/{search_query.replace(' ', '%20')}"
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
