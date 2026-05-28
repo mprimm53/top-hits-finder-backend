@@ -181,3 +181,6 @@ if __name__ == '__main__':
 @app.route('/api/trivia', methods=['GET'])
 def get_trivia_alt():
     return get_trivia()
+@app.route('/api/trivia', methods=['GET'])
+def get_trivia_alt():
+    return get_trivia()
