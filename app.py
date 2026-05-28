@@ -6,7 +6,7 @@ from urllib.parse import quote_plus
 import random
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins="*", allow_headers="*", methods=["GET", "POST", "OPTIONS"])
 
 @app.route('/', methods=['GET'])
 def home():
@@ -178,3 +178,6 @@ def search_spotify():
 
 if __name__ == '__main__':
     app.run(debug=True)
+@app.route('/api/trivia', methods=['GET'])
+def get_trivia_alt():
+    return get_trivia()
