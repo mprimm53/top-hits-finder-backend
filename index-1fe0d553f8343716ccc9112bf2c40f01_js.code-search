@@ -1,0 +1,10 @@
+# Query: index-1fe0d553f8343716ccc9112bf2c40f01.js
+# ContextLines: 1
+
+1 result - 1 file
+
+index.html:
+  34      <div id="root"></div>
+  35:   <script src="/_expo/static/js/web/index-1fe0d553f8343716ccc9112bf2c40f01.js" defer></script>
+  36  </body>
+cd "C:\Users\mprim\OneDrive\Documents\top_hits_finder_website (1)"
