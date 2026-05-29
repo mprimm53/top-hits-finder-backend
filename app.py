@@ -150,7 +150,7 @@ def get_trivia():
             {"fact": "The Rolling Stones have charted more than 100 songs on the Hot 100.", "category": "Artist"},
         ]
         fact = random.choice(trivia_facts)
-       return jsonify([fact])
+        return jsonify([fact])
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
