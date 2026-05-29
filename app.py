@@ -23,83 +23,35 @@ def home():
 def health():
     return jsonify({'status': 'healthy'})
 
-@app.route('/api/charts/<int:year>/<int:month>', methods=['GET'])
-def get_charts(year, month):
-    try:
-        date_str = f"{year}-{month:02d}-01"
-        chart = billboard.ChartData('hot-100', date=date_str)
-        songs = []
-        for entry in chart:
-            songs.append({
-                'rank': entry.rank,
-                'title': entry.title,
-                'artist': entry.artist,
-            })
-        return jsonify({'chart': songs})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
-@app.route('/api/charts/<int:year>/<int:month>/weeks', methods=['GET'])
-def get_chart_weeks(year, month):
+@app.route('/api/charts/search', methods=['GET'])
+def search_charts():
     try:
-        weeks = []
-        d = date(year, month, 1)
-        while d.month == month:
-            weeks.append({
-                'label': d.strftime('%b %d, %Y'),
-                'value': d.strftime('%Y-%m-%d')
-            })
-            d += timedelta(days=7)
-        return jsonify({'weeks': weeks})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/charts/<int:year>/<int:month>/<int:week>', methods=['GET'])
-def get_chart_by_week(year, month, week):
-    try:
-        date_str = f"{year}-{month:02d}-{week:02d}"
-        chart = billboard.ChartData('hot-100', date=date_str)
-        songs = []
-        for entry in chart:
-            songs.append({
-                'rank': entry.rank,
-                'title': entry.title,
-                'artist': entry.artist,
-            })
-        return jsonify({'chart': songs})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/weeks/<int:year>/<int:month>', methods=['GET'])
-def get_weeks(year, month):
-    try:
-        weeks = []
-        d = date(year, month, 1)
-        while d.month == month:
-            weeks.append({
-                'label': d.strftime('%b %d, %Y'),
-                'value': d.strftime('%Y-%m-%d')
-            })
-            d += timedelta(days=7)
-        return jsonify({'weeks': weeks})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/charts/on-this-day', methods=['GET'])
-def get_on_this_day():
-    try:
-        today = date.today()
+        query = request.args.get('q', '').lower()
+        if not query:
+            return jsonify({'results': []})
+        
+        # Search just one year/month for speed
         year = random.randint(1958, 1990)
-        date_str = f"{year}-{today.month:02d}-01"
-        chart = billboard.ChartData('hot-100', date=date_str)
-        songs = []
-        for entry in chart[:10]:
-            songs.append({
-                'rank': entry.rank,
-                'title': entry.title,
-                'artist': entry.artist,
-            })
-        return jsonify({'chart': songs, 'year': year, 'date': date_str})
+        results = []
+        try:
+            date_str = f"{year}-01-01"
+            chart = billboard.ChartData('hot-100', date=date_str)
+            for entry in chart:
+                if (query in entry.title.lower() or
+                        query in entry.artist.lower()):
+                    results.append({
+                        'rank': entry.rank,
+                        'title': entry.title,
+                        'artist': entry.artist,
+                        'year': year,
+                        'month': 1,
+                        'chartDate': date_str
+                    })
+        except:
+            pass
+        
+        return jsonify({'results': results[:20]})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -110,9 +62,9 @@ def search_charts():
         if not query:
             return jsonify({'results': []})
         results = []
-        years = random.sample(range(1958, 1991), 5)
+        years = random.sample(range(1958, 1991), 2)
         for year in years:
-            for month in [1, 6, 12]:
+            for month in [1, 6]:
                 try:
                     date_str = f"{year}-{month:02d}-01"
                     chart = billboard.ChartData('hot-100', date=date_str)
