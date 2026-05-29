@@ -55,35 +55,7 @@ def search_charts():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/charts/search', methods=['GET'])
-def search_charts():
-    try:
-        query = request.args.get('q', '').lower()
-        if not query:
-            return jsonify({'results': []})
-        results = []
-        years = random.sample(range(1958, 1991), 2)
-        for year in years:
-            for month in [1, 6]:
-                try:
-                    date_str = f"{year}-{month:02d}-01"
-                    chart = billboard.ChartData('hot-100', date=date_str)
-                    for entry in chart:
-                        if (query in entry.title.lower() or
-                                query in entry.artist.lower()):
-                            results.append({
-                                'rank': entry.rank,
-                                'title': entry.title,
-                                'artist': entry.artist,
-                                'year': year,
-                                'month': month,
-                                'chartDate': date_str
-                            })
-                except:
-                    continue
-        return jsonify({'results': results[:20]})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/trivia', methods=['GET'])
 @app.route('/api/trivia/random', methods=['GET'])
