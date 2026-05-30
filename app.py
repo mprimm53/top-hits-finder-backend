@@ -1,23 +1,4 @@
-from flask import Flask, jsonify, request, redirect
-from flask_cors import CORS
-import billboard
-from datetime import date, timedelta
-from urllib.parse import quote_plus
-import random
 
-app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
-
-@app.after_request
-def after_request(response):
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-    response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
-    return response
-
-@app.route('/', methods=['GET'])
-def home():
-    return jsonify({'status': 'Top Hits Finder API is running!'})
 
 @app.route('/health', methods=['GET'])
 def health():
