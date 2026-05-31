@@ -1,27 +1,36 @@
 from flask import Flask, jsonify, request, redirect
 from flask_cors import CORS
-from urllib.parse import quote_plus
 import billboard
+from datetime import date, timedelta
+from urllib.parse import quote_plus
 import random
 
 app = Flask(__name__)
-CORS(app)
+
+# Single source of truth for CORS. 
+# This handles preflight (OPTIONS) requests automatically.
+CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+# --- REMOVED THE AFTER_REQUEST BLOCK TO PREVENT CONFLICTS ---
+
+@app.route('/', methods=['GET'])
+def home():
+    return jsonify({'status': 'Top Hits Finder API is running!'})
 
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({'status': 'healthy'})
-
 
 @app.route('/api/charts/search', methods=['GET'])
 def search_charts():
     try:
         query = request.args.get('q', '').lower()
         if not query:
-            return jsonify({'results': []})
+            return jsonify({'results':[]})
         
         # Search just one year/month for speed
         year = random.randint(1958, 1990)
-        results = []
+        results =[]
         try:
             date_str = f"{year}-01-01"
             chart = billboard.ChartData('hot-100', date=date_str)
@@ -43,13 +52,11 @@ def search_charts():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
-
 @app.route('/api/trivia', methods=['GET'])
 @app.route('/api/trivia/random', methods=['GET'])
 def get_trivia():
     try:
-        trivia_facts = [
+        trivia_facts =[
             {"fact": "The Billboard Hot 100 was first published on August 4, 1958.", "category": "History"},
             {"fact": "Elvis Presley had 18 number-one hits on the Billboard Hot 100.", "category": "Artist"},
             {"fact": "The Beatles hold the record for most number-one hits with 20.", "category": "Record"},
@@ -70,22 +77,10 @@ def get_trivia():
 def get_decade_trivia(decade):
     try:
         decade_facts = {
-            '1950s': [
-                {"fact": "Rock 'n' Roll was born in the late 1950s with Elvis Presley and Chuck Berry.", "category": "History"},
-                {"fact": "The Billboard Hot 100 was first published on August 4, 1958.", "category": "History"},
-            ],
-            '1960s': [
-                {"fact": "The Beatles arrived in America in 1964, sparking Beatlemania.", "category": "History"},
-                {"fact": "The 1960s saw the British Invasion with The Rolling Stones and The Kinks.", "category": "History"},
-            ],
-            '1970s': [
-                {"fact": "Disco dominated the charts in the late 1970s with Donna Summer and the Bee Gees.", "category": "History"},
-                {"fact": "The 1970s saw the rise of funk music with James Brown and Parliament.", "category": "History"},
-            ],
-            '1980s': [
-                {"fact": "MTV launched on August 1, 1981, revolutionizing the music industry.", "category": "History"},
-                {"fact": "Michael Jackson's Thriller became the best-selling album of all time in the 1980s.", "category": "History"},
-            ],
+            '1950s': [{"fact": "Rock 'n' Roll was born in the late 1950s.", "category": "History"}],
+            '1960s': [{"fact": "The Beatles arrived in America in 1964.", "category": "History"}],
+            '1970s': [{"fact": "Disco dominated the charts in the late 1970s.", "category": "History"}],
+            '1980s': [{"fact": "MTV launched on August 1, 1981.", "category": "History"}],
         }
         facts = decade_facts.get(decade, [{"fact": f"The {decade} was a great decade for music!", "category": "History"}])
         return jsonify(random.choice(facts))
@@ -94,26 +89,19 @@ def get_decade_trivia(decade):
 
 @app.route('/api/search/youtube', methods=['GET'])
 def search_youtube():
-    try:
-        title = request.args.get('title', '')
-        artist = request.args.get('artist', '')
-        search_query = quote_plus(f"{title} {artist} official")
-        url = f"https://www.youtube.com/results?search_query={search_query}"
-        return redirect(url, code=302)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    title = request.args.get('title', '')
+    artist = request.args.get('artist', '')
+    search_query = quote_plus(f"{title} {artist} official")
+    url = f"https://www.youtube.com/results?search_query={search_query}"
+    return redirect(url, code=302)
 
 @app.route('/api/search/spotify', methods=['GET'])
 def search_spotify():
-    try:
-        title = request.args.get('title', '')
-        artist = request.args.get('artist', '')
-        search_query = quote_plus(f"{title} {artist}")
-        url = f"https://open.spotify.com/search/{search_query}"
-        return redirect(url, code=302)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    title = request.args.get('title', '')
+    artist = request.args.get('artist', '')
+    search_query = quote_plus(f"{title} {artist}")
+    url = f"https://open.spotify.com/search/{search_query}"
+    return redirect(url, code=302)
 
 if __name__ == '__main__':
     app.run(debug=True)
-
