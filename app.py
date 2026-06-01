@@ -42,11 +42,15 @@ def get_on_this_day():
 @app.route('/api/charts/<year>/<month>/<day>', methods=['GET'])
 def get_chart_by_date(year, month, day):
     try:
-        date_str = f"{year}-{month}-{day}"
+        # Properly format the date string
+        date_str = f"{year}-{int(month):02d}-{int(day):02d}"
         chart = billboard.ChartData('hot-100', date=date_str)
-        # Convert chart data to a list your frontend can read
+        
+        # Convert chart entries to a list
         results = [{'title': entry.title, 'artist': entry.artist, 'rank': entry.rank} for entry in chart]
         return jsonify(results)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 @app.route('/health', methods=['GET'])
