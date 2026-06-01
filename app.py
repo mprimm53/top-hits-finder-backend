@@ -20,11 +20,17 @@ def home():
 
 # --- ADD YOUR NEW ROUTES HERE ---
 
-@app.route('/api/charts/<int:year>/<int:month>/weeks', methods=['GET'])
+@app.route('/api/charts/<year>/<month>/weeks', methods=['GET'])
 def get_weeks(year, month):
-    # This generates a list of chart dates for the chosen year/month
-    # Billboard charts usually come out weekly.
-    return jsonify([f"{year}-{month:02d}-07", f"{year}-{month:02d}-14", f"{year}-{month:02d}-21", f"{year}-{month:02d}-28"])
+    # Returning a list of dictionaries with 'label' and 'value' 
+    # is the standard way to fill a dropdown menu
+    weeks =[
+        {"label": f"{month}/01/{year}", "value": f"{year}-{month}-01"},
+        {"label": f"{month}/08/{year}", "value": f"{year}-{month}-08"},
+        {"label": f"{month}/15/{year}", "value": f"{year}-{month}-15"},
+        {"label": f"{month}/22/{year}", "value": f"{year}-{month}-22"}
+    ]
+    return jsonify(weeks)
 
 @app.route('/api/charts/on-this-day', methods=['GET'])
 def get_on_this_day():
