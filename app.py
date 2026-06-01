@@ -15,8 +15,40 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 @app.route('/', methods=['GET'])
 def home():
+
     return jsonify({'status': 'Top Hits Finder API is running!'})
 
+# --- ADD YOUR NEW ROUTES HERE ---
+
+@app.route('/api/charts/<int:year>/<int:month>/weeks', methods=['GET'])
+def get_weeks(year, month):
+    # This generates a list of chart dates for the chosen year/month
+    # Billboard charts usually come out weekly.
+    return jsonify([f"{year}-{month:02d}-07", f"{year}-{month:02d}-14", f"{year}-{month:02d}-21", f"{year}-{month:02d}-28"])
+
+@app.route('/api/charts/on-this-day', methods=['GET'])
+def get_on_this_day():
+    # Fetch for today's date in a random year from the 80s as a fallback, 
+    # or just use today's actual date
+    today = date.today()
+    date_str = f"{today.year}-{today.month:02d}-{today.day:02d}"
+    try:
+        chart = billboard.ChartData('hot-100', date=date_str)
+        results = [{'title': entry.title, 'artist': entry.artist, 'rank': entry.rank} for entry in chart]
+        return jsonify(results)
+    except:
+        return jsonify([])
+
+@app.route('/api/charts/<year>/<month>/<day>', methods=['GET'])
+def get_chart_by_date(year, month, day):
+    try:
+        date_str = f"{year}-{month}-{day}"
+        chart = billboard.ChartData('hot-100', date=date_str)
+        # Convert chart data to a list your frontend can read
+        results = [{'title': entry.title, 'artist': entry.artist, 'rank': entry.rank} for entry in chart]
+        return jsonify(results)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({'status': 'healthy'})
