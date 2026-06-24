@@ -37,15 +37,15 @@ def home():
 
 @app.route('/api/charts/<year>/<month>/weeks', methods=['GET'])
 def get_weeks(year, month):
-    # Returning a list of dictionaries with 'label' and 'value' 
-    # is the standard way to fill a dropdown menu
-    weeks =[
-        {"label": f"{month}/01/{year}", "value": f"{year}-{month}-01"},
-        {"label": f"{month}/08/{year}", "value": f"{year}-{month}-08"},
-        {"label": f"{month}/15/{year}", "value": f"{year}-{month}-15"},
-        {"label": f"{month}/22/{year}", "value": f"{year}-{month}-22"}
+    # The frontend expects { year, month, weeks: [{week, date, label}] }.
+    # `week` (1-4) is the selection value the app sends back to the chart route.
+    m = int(month)
+    days = [1, 8, 15, 22]
+    weeks = [
+        {"week": i + 1, "date": f"{year}-{m:02d}-{d:02d}", "label": f"Week {i + 1} ({m}/{d:02d}/{year})"}
+        for i, d in enumerate(days)
     ]
-    return jsonify(weeks)
+    return jsonify({"year": int(year), "month": m, "weeks": weeks})
 
 @app.route('/api/charts/on-this-day', methods=['GET'])
 def get_on_this_day():
@@ -55,17 +55,31 @@ def get_on_this_day():
     date_str = f"{today.year}-{today.month:02d}-{today.day:02d}"
     try:
         results = fetch_hot100(date_str)
-        return jsonify(results)
+        # Frontend expects { year, chartDate, song: {title, artist, rank} }.
+        return jsonify({
+            "year": today.year,
+            "chartDate": date_str,
+            "song": results[0] if results else None,
+        })
     except:
-        return jsonify([])
+        return jsonify(None)
 
-@app.route('/api/charts/<year>/<month>/<day>', methods=['GET'])
-def get_chart_by_date(year, month, day):
+@app.route('/api/charts/<year>/<month>/<week>', methods=['GET'])
+def get_chart_by_date(year, month, week):
     try:
-        # Properly format the date string
-        date_str = f"{year}-{int(month):02d}-{int(day):02d}"
+        # The app sends the week selection (1-4); map it to a day of the month.
+        week_to_day = {1: 1, 2: 8, 3: 15, 4: 22}
+        day = week_to_day.get(int(week), 1)
+        date_str = f"{year}-{int(month):02d}-{day:02d}"
         results = fetch_hot100(date_str)
-        return jsonify(results)
+        # Frontend expects { year, month, week, chartDate, chart: [...] }.
+        return jsonify({
+            "year": int(year),
+            "month": int(month),
+            "week": int(week),
+            "chartDate": date_str,
+            "chart": results,
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 @app.route('/health', methods=['GET'])
