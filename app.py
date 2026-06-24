@@ -1,32 +1,36 @@
 from flask import Flask, jsonify, request, redirect
 from flask_cors import CORS
-import billboard
-from datetime import date, timedelta
+from datetime import date, datetime
 from urllib.parse import quote_plus
-import random
+from bisect import bisect_left
+import gzip, json, os, random
 
 app = Flask(__name__)
 
-# Single source of truth for CORS. 
+# Single source of truth for CORS.
 # This handles preflight (OPTIONS) requests automatically.
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-# --- REMOVED THE AFTER_REQUEST BLOCK TO PREVENT CONFLICTS ---
+# Bundled Billboard Hot 100 dataset (1958-1990). Loaded once at startup, so every
+# chart lookup is instant and reliable — no live scraping of billboard.com (which
+# was slow/unreliable and caused the gateway timeouts).
+_DATA_PATH = os.path.join(os.path.dirname(__file__), 'data', 'hot100_1958_1990.json.gz')
+with gzip.open(_DATA_PATH, 'rt', encoding='utf-8') as _f:
+    _DATA = json.load(_f)
+_WEEKS = _DATA['weeks']      # sorted list of 'YYYY-MM-DD' chart dates
+_CHARTS = _DATA['charts']    # { 'YYYY-MM-DD': [{rank, title, artist}, ...] }
 
-# Simple in-memory cache. A Billboard chart for a given date never changes,
-# so we scrape billboard.com only once per date and reuse the result.
-# This turns repeat requests from ~30s into instant responses.
-_chart_cache = {}
+def _nearest_week(date_str):
+    """Closest chart-week date in the dataset to the requested date."""
+    target = datetime.strptime(date_str, '%Y-%m-%d').date()
+    i = bisect_left(_WEEKS, date_str)
+    candidates = [_WEEKS[j] for j in (i - 1, i) if 0 <= j < len(_WEEKS)]
+    return min(candidates, key=lambda w: abs((datetime.strptime(w, '%Y-%m-%d').date() - target).days))
 
 def fetch_hot100(date_str):
-    """Return Hot 100 entries for date_str, scraping billboard.com at most once per date."""
-    if date_str not in _chart_cache:
-        chart = billboard.ChartData('hot-100', date=date_str)
-        _chart_cache[date_str] = [
-            {'title': entry.title, 'artist': entry.artist, 'rank': entry.rank}
-            for entry in chart
-        ]
-    return _chart_cache[date_str]
+    """Return (chart_week_date, entries) for the chart week nearest date_str."""
+    wk = _nearest_week(date_str)
+    return wk, _CHARTS[wk]
 
 @app.route('/', methods=['GET'])
 def home():
@@ -49,19 +53,19 @@ def get_weeks(year, month):
 
 @app.route('/api/charts/on-this-day', methods=['GET'])
 def get_on_this_day():
-    # Fetch for today's date in a random year from the 80s as a fallback, 
-    # or just use today's actual date
+    # "This week in music history" — today's date in a random in-range year.
     today = date.today()
-    date_str = f"{today.year}-{today.month:02d}-{today.day:02d}"
+    year = random.randint(1958, 1990)
+    date_str = f"{year}-{today.month:02d}-{min(today.day, 28):02d}"
     try:
-        results = fetch_hot100(date_str)
+        chart_week, results = fetch_hot100(date_str)
         # Frontend expects { year, chartDate, song: {title, artist, rank} }.
         return jsonify({
-            "year": today.year,
-            "chartDate": date_str,
+            "year": int(chart_week[:4]),
+            "chartDate": chart_week,
             "song": results[0] if results else None,
         })
-    except:
+    except Exception:
         return jsonify(None)
 
 @app.route('/api/charts/<year>/<month>/<week>', methods=['GET'])
@@ -71,13 +75,13 @@ def get_chart_by_date(year, month, week):
         week_to_day = {1: 1, 2: 8, 3: 15, 4: 22}
         day = week_to_day.get(int(week), 1)
         date_str = f"{year}-{int(month):02d}-{day:02d}"
-        results = fetch_hot100(date_str)
+        chart_week, results = fetch_hot100(date_str)
         # Frontend expects { year, month, week, chartDate, chart: [...] }.
         return jsonify({
             "year": int(year),
             "month": int(month),
             "week": int(week),
-            "chartDate": date_str,
+            "chartDate": chart_week,
             "chart": results,
         })
     except Exception as e:
@@ -92,27 +96,29 @@ def search_charts():
         query = request.args.get('q', '').lower()
         if not query:
             return jsonify({'results':[]})
-        
-        # Search just one year/month for speed
-        year = random.randint(1958, 1990)
-        results =[]
-        try:
-            date_str = f"{year}-01-01"
-            for entry in fetch_hot100(date_str):
-                if (query in entry['title'].lower() or
-                        query in entry['artist'].lower()):
+
+        # Scan the full 1958-1990 dataset; return the first 20 unique matches.
+        results = []
+        seen = set()
+        for wk in _WEEKS:
+            for entry in _CHARTS[wk]:
+                if query in entry['title'].lower() or query in entry['artist'].lower():
+                    key = (entry['title'], entry['artist'])
+                    if key in seen:
+                        continue
+                    seen.add(key)
                     results.append({
                         'rank': entry['rank'],
                         'title': entry['title'],
                         'artist': entry['artist'],
-                        'year': year,
-                        'month': 1,
-                        'chartDate': date_str
+                        'year': int(wk[:4]),
+                        'month': int(wk[5:7]),
+                        'chartDate': wk,
                     })
-        except:
-            pass
-        
-        return jsonify({'results': results[:20]})
+                    if len(results) >= 20:
+                        return jsonify({'results': results})
+
+        return jsonify({'results': results})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
