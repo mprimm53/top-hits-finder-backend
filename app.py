@@ -13,6 +13,21 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # --- REMOVED THE AFTER_REQUEST BLOCK TO PREVENT CONFLICTS ---
 
+# Simple in-memory cache. A Billboard chart for a given date never changes,
+# so we scrape billboard.com only once per date and reuse the result.
+# This turns repeat requests from ~30s into instant responses.
+_chart_cache = {}
+
+def fetch_hot100(date_str):
+    """Return Hot 100 entries for date_str, scraping billboard.com at most once per date."""
+    if date_str not in _chart_cache:
+        chart = billboard.ChartData('hot-100', date=date_str)
+        _chart_cache[date_str] = [
+            {'title': entry.title, 'artist': entry.artist, 'rank': entry.rank}
+            for entry in chart
+        ]
+    return _chart_cache[date_str]
+
 @app.route('/', methods=['GET'])
 def home():
 
@@ -39,8 +54,7 @@ def get_on_this_day():
     today = date.today()
     date_str = f"{today.year}-{today.month:02d}-{today.day:02d}"
     try:
-        chart = billboard.ChartData('hot-100', date=date_str)
-        results = [{'title': entry.title, 'artist': entry.artist, 'rank': entry.rank} for entry in chart]
+        results = fetch_hot100(date_str)
         return jsonify(results)
     except:
         return jsonify([])
@@ -50,13 +64,8 @@ def get_chart_by_date(year, month, day):
     try:
         # Properly format the date string
         date_str = f"{year}-{int(month):02d}-{int(day):02d}"
-        chart = billboard.ChartData('hot-100', date=date_str)
-        
-        # Convert chart entries to a list
-        results = [{'title': entry.title, 'artist': entry.artist, 'rank': entry.rank} for entry in chart]
+        results = fetch_hot100(date_str)
         return jsonify(results)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 @app.route('/health', methods=['GET'])
@@ -75,14 +84,13 @@ def search_charts():
         results =[]
         try:
             date_str = f"{year}-01-01"
-            chart = billboard.ChartData('hot-100', date=date_str)
-            for entry in chart:
-                if (query in entry.title.lower() or
-                        query in entry.artist.lower()):
+            for entry in fetch_hot100(date_str):
+                if (query in entry['title'].lower() or
+                        query in entry['artist'].lower()):
                     results.append({
-                        'rank': entry.rank,
-                        'title': entry.title,
-                        'artist': entry.artist,
+                        'rank': entry['rank'],
+                        'title': entry['title'],
+                        'artist': entry['artist'],
                         'year': year,
                         'month': 1,
                         'chartDate': date_str
