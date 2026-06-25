@@ -122,26 +122,39 @@ def search_charts():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# Decade-tagged trivia. Each fact carries the fields the app expects
+# (id, decade, category, fact) and is filterable via ?decade=.
+TRIVIA_FACTS = [
+    {"id": 1, "decade": "1950s", "category": "Chart Records", "fact": "The Billboard Hot 100 debuted on August 4, 1958. Its first #1 was 'Poor Little Fool' by Ricky Nelson."},
+    {"id": 2, "decade": "1950s", "category": "Genre Origins", "fact": "Rock 'n' roll broke into the mainstream in the late 1950s and reshaped popular music."},
+    {"id": 3, "decade": "1950s", "category": "Artist Milestones", "fact": "Elvis Presley became the defining star of the late-'50s charts."},
+    {"id": 4, "decade": "1950s", "category": "Cultural Impact", "fact": "TV appearances like Elvis on 'The Ed Sullivan Show' turned singers into national phenomena."},
+    {"id": 5, "decade": "1960s", "category": "Artist Milestones", "fact": "The Beatles arrived in America in 1964 and went on to score a record 20 Hot 100 #1 hits."},
+    {"id": 6, "decade": "1960s", "category": "Cultural Impact", "fact": "The 'British Invasion' brought The Beatles, The Rolling Stones and The Who to U.S. charts."},
+    {"id": 7, "decade": "1960s", "category": "Chart Records", "fact": "Motown turned Detroit into a hit factory with The Supremes, The Temptations and Stevie Wonder."},
+    {"id": 8, "decade": "1960s", "category": "Behind the Music", "fact": "The Beach Boys' 'Good Vibrations' (1966) was a famously elaborate and costly production."},
+    {"id": 9, "decade": "1970s", "category": "Genre Origins", "fact": "Disco took over dance floors and the charts in the second half of the 1970s."},
+    {"id": 10, "decade": "1970s", "category": "Cultural Impact", "fact": "1977's 'Saturday Night Fever' soundtrack sent disco into the mainstream."},
+    {"id": 11, "decade": "1970s", "category": "Behind the Music", "fact": "Fleetwood Mac's 'Rumours' (1977) became one of the best-selling albums ever."},
+    {"id": 12, "decade": "1970s", "category": "Artist Milestones", "fact": "Stevie Wonder's run of 1970s albums swept the Grammys multiple years."},
+    {"id": 13, "decade": "1980s", "category": "Cultural Impact", "fact": "MTV launched on August 1, 1981, making the music video essential to a hit."},
+    {"id": 14, "decade": "1980s", "category": "Artist Milestones", "fact": "Michael Jackson's 'Thriller' (1982) is the best-selling album of all time."},
+    {"id": 15, "decade": "1980s", "category": "Chart Records", "fact": "Madonna piled up a remarkable streak of Top 5 hits across the decade."},
+    {"id": 16, "decade": "1980s", "category": "Behind the Music", "fact": "Prince wrote, played and produced most of his 1980s work, including 'Purple Rain'."},
+]
+
 @app.route('/api/trivia', methods=['GET'])
-@app.route('/api/trivia/random', methods=['GET'])
 def get_trivia():
-    try:
-        trivia_facts =[
-            {"fact": "The Billboard Hot 100 was first published on August 4, 1958.", "category": "History"},
-            {"fact": "Elvis Presley had 18 number-one hits on the Billboard Hot 100.", "category": "Artist"},
-            {"fact": "The Beatles hold the record for most number-one hits with 20.", "category": "Record"},
-            {"fact": "Michael Jackson's 'Thriller' is the best-selling album of all time.", "category": "Artist"},
-            {"fact": "The first number-one song on the Hot 100 was 'Poor Little Fool' by Ricky Nelson.", "category": "History"},
-            {"fact": "Mariah Carey has had 19 number-one singles on the Billboard Hot 100.", "category": "Artist"},
-            {"fact": "Whitney Houston's 'I Will Always Love You' spent 14 weeks at number one in 1992.", "category": "Record"},
-            {"fact": "MTV launched on August 1, 1981, revolutionizing the music industry.", "category": "History"},
-            {"fact": "The Beach Boys' 'Good Vibrations' cost $50,000 to record in 1966.", "category": "History"},
-            {"fact": "The Rolling Stones have charted more than 100 songs on the Hot 100.", "category": "Artist"},
-        ]
-        fact = random.choice(trivia_facts)
-        return jsonify([fact])
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    # Optional ?decade=1950s|1960s|1970s|1980s filter; otherwise all decades.
+    decade = request.args.get('decade', '').strip()
+    facts = [f for f in TRIVIA_FACTS if not decade or f['decade'] == decade]
+    facts = facts[:]
+    random.shuffle(facts)
+    return jsonify(facts)
+
+@app.route('/api/trivia/random', methods=['GET'])
+def get_random_trivia():
+    return jsonify(random.choice(TRIVIA_FACTS))
 
 @app.route('/api/trivia/decade-<string:decade>', methods=['GET'])
 def get_decade_trivia(decade):
